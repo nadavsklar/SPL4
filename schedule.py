@@ -1,7 +1,6 @@
 import os
 import sqlite3
 
-
 databaseName = "schedule.db"
 
 
@@ -58,29 +57,20 @@ def assign_course(classroom, selected_course, _conn):
     """)
 
 
-def check_free_classrooms(_conn, iteration_number, fresh_occupied_classes):
-    query_get_classrooms = _conn.cursor()
-    query_get_classrooms.execute("""
-                    SELECT * FROM classrooms
-                    WHERE classrooms.current_course_time_left = 0
+def check_free_classrooms(_conn, iteration_number, classroom):
+    query_get_courses = _conn.cursor()
+    query_get_courses.execute("""
+                    SELECT * FROM courses
+                    WHERE class_id = """ + str(classroom[0]) + """
+                    AND id NOT IN (SELECT current_course_id FROM classrooms)
                 """)
-    list_of_classrooms = query_get_classrooms.fetchall()
-    if list_of_classrooms.__len__() != 0:
-        for classroom in list_of_classrooms:  # classroom is available
-            query_get_courses = _conn.cursor()
-            query_get_courses.execute("""
-                SELECT * FROM courses
-                WHERE class_id = """ + str(classroom[0]) + """
-                AND id NOT IN (SELECT current_course_id FROM classrooms)
-            """)
-            courses = query_get_courses.fetchall()
-            if courses.__len__() != 0:
-                selected_course = courses[0]
-                update_num_of_student(selected_course, _conn)
-                print('(' + str(iteration_number) + ') ' + classroom[1] + ': ' + selected_course[1] +
-                      ' is schedule to start')
-                assign_course(classroom, selected_course, _conn)
-                fresh_occupied_classes.append(classroom[0])
+    courses = query_get_courses.fetchall()
+    if courses.__len__() != 0:
+        selected_course = courses[0]
+        update_num_of_student(selected_course, _conn)
+        print('(' + str(iteration_number) + ') ' + classroom[1] + ': ' + selected_course[1] +
+              ' is schedule to start')
+        assign_course(classroom, selected_course, _conn)
 
 
 def get_course(_conn, occupied_classroom):
@@ -108,7 +98,8 @@ def free_classroom(_conn, classroom):
         WHERE id = """ + str(classroom[0]) + """
     """)
 
-def update_current_course_time_left(_conn, occupied_classroom, iteration_number, fresh_occupied_classes):
+
+def update_current_course_time_left(_conn, occupied_classroom, iteration_number):
     course = get_course(_conn, occupied_classroom)
     query_update = _conn.cursor()
     query_update.execute("""
@@ -121,43 +112,43 @@ def update_current_course_time_left(_conn, occupied_classroom, iteration_number,
         SELECT current_course_time_left FROM classrooms
         WHERE id = """ + str(occupied_classroom[0]) + """
     """)
-    if query_update.fetchall()[0][0] == 0:  #finished
+    if query_update.fetchall()[0][0] == 0:  # finished
         print('(' + str(iteration_number) + ') ' + occupied_classroom[1] + ': ' + course[0][1] + ' is done')
         delete_course(_conn, course)
         free_classroom(_conn, occupied_classroom)
-        check_free_classrooms(_conn, iteration_number, fresh_occupied_classes)
+        check_free_classrooms(_conn, iteration_number, occupied_classroom)
     else:
         print('(' + str(iteration_number) + ') ' + occupied_classroom[1] + ': occupied by ' + course[0][1])
 
 
-def check_occupied_classrooms(_conn, iteration_number, fresh_occupied_classes):
+def check_occupied_classrooms(_conn, iteration_number, classroom):
+    update_current_course_time_left(_conn, classroom, iteration_number)
+
+
+def get_classrooms(_conn):
     query_get_classrooms = _conn.cursor()
     query_get_classrooms.execute("""
-        SELECT classrooms.id, classrooms.location, classrooms.current_course_id, classrooms.current_course_time_left
-        FROM classrooms
-        JOIN courses ON courses.id = classrooms.current_course_id
-        WHERE NOT classrooms.current_course_time_left = 0
-    """)
+                        SELECT * FROM classrooms
+                    """)
     list_of_classrooms = query_get_classrooms.fetchall()
-    if list_of_classrooms.__len__() != 0:
-        for classroom in list_of_classrooms:
-            if not fresh_occupied_classes.__contains__(classroom[0]):
-                update_current_course_time_left(_conn, classroom, iteration_number, fresh_occupied_classes)
+    return list_of_classrooms
 
 
 def main():
     if os.path.isfile(databaseName):
         _conn = sqlite3.connect(databaseName)
-        fresh_occupied_classes = []
         iteration_number = 0
         running_first_time = True
         while check_if_courses_exist(_conn):
             running_first_time = False
-            check_free_classrooms(_conn, iteration_number, fresh_occupied_classes)
-            check_occupied_classrooms(_conn, iteration_number, fresh_occupied_classes)
+            list_of_classrooms = get_classrooms(_conn)
+            for classroom in list_of_classrooms:
+                if classroom[3] == 0:  # empty
+                    check_free_classrooms(_conn, iteration_number, classroom)
+                else:
+                    check_occupied_classrooms(_conn, iteration_number, classroom)
             print_tables(_conn)
             iteration_number = iteration_number + 1
-            fresh_occupied_classes.clear()
         if running_first_time:
             print_tables(_conn)
         _conn.commit()
