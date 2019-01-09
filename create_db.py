@@ -93,6 +93,8 @@ def main(args):
     create_tables(_conn)
     initiate_tables_with_values(args[1], _conn)
     print_tables(_conn)
+    _conn.commit()
+    _conn.close()
 
 
 if __name__ == "__main__":
