@@ -3,11 +3,9 @@ import sqlite3
 import os
 
 databaseName = "schedule.db"
-coursesTable = "courses"
-studentsTable = "students"
-classroomsTable = "classrooms"
 
-def createTables(_conn):
+
+def create_tables(_conn):
     _conn.executescript("""
         CREATE TABLE students (
             grade      TEXT      PRIMARY KEY,
@@ -64,12 +62,37 @@ def initiate_tables_with_values(config_file_path, _conn):
             insert_to_courses(details, _conn)
 
 
+def print_table(table_name, list_of_tuples):
+    print(table_name)
+    for item in list_of_tuples:
+        print(item)
+
+
+def print_tables(_conn):
+    query_data = _conn.cursor()
+    query_data.execute("""
+        SELECT * FROM courses
+    """)
+    print_table("courses", query_data.fetchall())
+    query_data = _conn.cursor()
+    query_data.execute("""
+            SELECT * FROM classrooms
+        """)
+    print_table("classrooms", query_data.fetchall())
+    query_data = _conn.cursor()
+    query_data.execute("""
+            SELECT * FROM students
+        """)
+    print_table("students", query_data.fetchall())
+
+
 def main(args):
     if os.path.isfile(databaseName):
-        print("db exists")
+        return
     _conn = sqlite3.connect(databaseName)
-#    createTables(_conn)
-    initiate_tables_with_values("/home/nadavsklar/PycharmProjects/SPL4/src/config1.txt", _conn)
+    create_tables(_conn)
+    initiate_tables_with_values(args[1], _conn)
+    print_tables(_conn)
 
 
 if __name__ == "__main__":
