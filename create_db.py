@@ -51,6 +51,7 @@ def insert_to_classrooms(details, _conn):
 
 def initiate_tables_with_values(config_file_path, _conn):
     file = open(config_file_path, "r")
+    courses = []
     for line in file:
         line = line.strip()
         details = line.split(', ')
@@ -59,7 +60,9 @@ def initiate_tables_with_values(config_file_path, _conn):
         elif details[0] == 'R':
             insert_to_classrooms(details, _conn)
         elif details[0] == 'C':
-            insert_to_courses(details, _conn)
+            courses.append(details)
+    for course in courses:
+        insert_to_courses(course, _conn)
 
 
 def print_table(table_name, list_of_tuples):

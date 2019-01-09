@@ -78,7 +78,7 @@ def check_free_classrooms(_conn, iteration_number, fresh_occupied_classes):
                 selected_course = courses[0]
                 update_num_of_student(selected_course, _conn)
                 print('(' + str(iteration_number) + ') ' + classroom[1] + ': ' + selected_course[1] +
-                      'is schedule to start')
+                      ' is schedule to start')
                 assign_course(classroom, selected_course, _conn)
                 fresh_occupied_classes.append(classroom[0])
 
@@ -100,6 +100,14 @@ def delete_course(_conn, course):
     """)
 
 
+def free_classroom(_conn, classroom):
+    query_free = _conn.cursor()
+    query_free.execute("""
+        UPDATE classrooms
+        SET current_course_id = 0
+        WHERE id = """ + str(classroom[0]) + """
+    """)
+
 def update_current_course_time_left(_conn, occupied_classroom, iteration_number, fresh_occupied_classes):
     course = get_course(_conn, occupied_classroom)
     query_update = _conn.cursor()
@@ -116,6 +124,7 @@ def update_current_course_time_left(_conn, occupied_classroom, iteration_number,
     if query_update.fetchall()[0][0] == 0:  #finished
         print('(' + str(iteration_number) + ') ' + occupied_classroom[1] + ': ' + course[0][1] + ' is done')
         delete_course(_conn, course)
+        free_classroom(_conn, occupied_classroom)
         check_free_classrooms(_conn, iteration_number, fresh_occupied_classes)
     else:
         print('(' + str(iteration_number) + ') ' + occupied_classroom[1] + ': occupied by ' + course[0][1])
