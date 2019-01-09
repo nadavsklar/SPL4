@@ -150,12 +150,18 @@ def main():
         _conn = sqlite3.connect(databaseName)
         fresh_occupied_classes = []
         iteration_number = 0
+        running_first_time = True
         while check_if_courses_exist(_conn):
+            running_first_time = False
             check_free_classrooms(_conn, iteration_number, fresh_occupied_classes)
             check_occupied_classrooms(_conn, iteration_number, fresh_occupied_classes)
             print_tables(_conn)
             iteration_number = iteration_number + 1
             fresh_occupied_classes.clear()
+        if running_first_time:
+            print_tables(_conn)
+        _conn.commit()
+        _conn.close()
 
 
 if __name__ == "__main__":
